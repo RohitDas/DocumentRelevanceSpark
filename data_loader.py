@@ -5,7 +5,8 @@
 from pyspark import SparkConf,SparkContext, SQLContext
 
 class DataLoader(object):
-    def __init__(self, spark_context):
+    def __init__(self, 
+                 spark_context):
         self.spark_context = spark_context
         self.sql_context_created = False
 
@@ -13,7 +14,9 @@ class DataLoader(object):
         #print schema of the sql rdd
         sqlrdd.printSchema();
 
-    def load_data_under_cur_context(self, file_path):
+    def load_data_under_cur_context(self, 
+                                    file_path,
+                                    sample_factor=1):
         """
             The function returns an RDD of the form (DOCID, DOCSTRING)
             DOCID: reviewerId + asin
@@ -26,10 +29,15 @@ class DataLoader(object):
         book_reviews = sql_context.read.json(file_path)
 
         self.visualize(book_reviews)
-        return book_reviews.select("reviewText", 
-                                    "summary",
-                                    "reviewerId", 
-                                    "asin").rdd.map(lambda x: ("".join(x[2:])," ".join(x[0:2])))
+        book_reviews_mod = book_reviews.select("reviewText", 
+                                               "summary",
+                                               "reviewerId", 
+                                               "asin").rdd.map(lambda x: ("".join(x[2:])," ".join(x[0:2])))
+
+        if sample_factor < 1:
+            return book_reviews_mod.sample(False, sample_factor)
+        else:
+            return book_reviews_mod
     
         
 def get_new_spark_context(conf):

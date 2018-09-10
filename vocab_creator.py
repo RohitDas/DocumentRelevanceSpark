@@ -39,11 +39,11 @@ class VocabularyCreator(object):
     def get_vocab(self, docid_to_docstring_rdd):
         #Tokenize the documents
         docids = docid_to_docstring_rdd.map(lambda x: x[0])
-        tokenized_doc = docid_to_docstring_rdd.map(lambda x: self.preprocessor.tokenize(x[1]))
+        tokenized_doc = docid_to_docstring_rdd.flatMap(lambda x: self.preprocessor.tokenize(x[1]))
         #Undergo furhter preprocessing
         preprocessed_doc = tokenized_doc.map(lambda x: self.preprocessor.preprocess(x))
         #Take the distinct words
-        vocab = preprocessor_doc.distinct()
+        vocab = preprocessed_doc.distinct()
         return docids, vocab
 
 if __name__ == "__main__":
@@ -56,4 +56,13 @@ if __name__ == "__main__":
     #Checking Vocabulary creator
     vocab_creator = VocabularyCreator(preprocessor)
 
-
+    from data_loader import DataLoader, get_new_spark_context
+    from pyspark import SparkConf
+    conf = SparkConf().setAppName("TF-IDF")
+    context = get_new_spark_context(conf)
+    data_loader = DataLoader(context)
+    file_path = "/home/rohittulu/Downloads/bookreviews.json" #Placed in the same directory for now.
+    bookreviews = data_loader.load_data_under_cur_context(file_path, 0.001)
+    docids, vocab = vocab_creator.get_vocab(bookreviews)
+    print docids.take(20)
+    print vocab.take(20)
