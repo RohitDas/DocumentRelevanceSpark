@@ -31,6 +31,19 @@ class TFIDFCalcular(object):
         assert vocab != None, "Error caused due to null vocab"
         return docids.cartesian(vocab)
 
+    def calculate_tf(self,
+                     doc_ids_to_doc_str):
+        doc_to_tokens_rdd = doc_ids_to_doc_str.map(lambda x: (x[0], tokenize(x[1])))
+        tfs = tokens_rdd.flatMapValues(lambda x: x).map(lambda x: (x, 1)).reduceByKey(lambda x, y: x+y)
+        return tfs
+
+    def calculate_df(self,
+                      doc_ids_to_doc_str):
+        df = tokenized_sample.flatMapValues(lambda x: x)\
+                            .distinct()\                                              
+                                .map(lambda (title,word): (word,title)).countByKey()
+        return df
+
     def calculate_tf_idf(self):
         if not self.is_objs_initialized:
             self.initialize_objs()
@@ -40,7 +53,11 @@ class TFIDFCalcular(object):
 
         cartesian_docs = self.get_cartesian_rdd(docids,
                                                 vocab)
-        return cartesian_docs
+        tf = self.calculate_tf(doc_ids_to_doc_str)
+        df = self.calculate_df(doc_ids_to_doc_str)
+        
+        #Calcualte tf-idf
+
 
         
 if __name__ == "__main__":
