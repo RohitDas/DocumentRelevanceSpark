@@ -4,7 +4,7 @@
 from data_loader import DataLoader, get_new_spark_context
 from vocab_creator import Preprocessor, VocabularyCreator
 
-from pyspark impork SparkContext, SparkConf
+from pyspark import SparkContext, SparkConf
 
 class TFIDFCalcular(object):
     def __init__(self,
@@ -12,16 +12,17 @@ class TFIDFCalcular(object):
                  data_path,
                  stopwords_path,
                  sample_factor):
+        self.context = context
         self.data_path = data_path
         self.stopwords_path = stopwords_path
         self.sample_factor = sample_factor
-        self.initialize_objs = False
+        self.is_objs_initialized = False
 
     def initialize_objs(self):
-        self.data_loader = DataLoaderelf.context)
+        self.data_loader = DataLoader(self.context)
         self.preprocessor = Preprocessor(stopwords_path)
         self.vocab_creator = VocabularyCreator(self.preprocessor)
-        self.initialize_objs = True
+        self.is_objs_initialized = True
 
     def get_cartesian_rdd(self, 
                           docids,
@@ -31,7 +32,7 @@ class TFIDFCalcular(object):
         return docids.cartesian(vocab)
 
     def calculate_tf_idf(self):
-        if not is_objs_initialized():
+        if not self.is_objs_initialized:
             self.initialize_objs()
         doc_ids_to_doc_str = self.data_loader.load_data_under_cur_context(self.data_path,
                                                                           self.sample_factor)
