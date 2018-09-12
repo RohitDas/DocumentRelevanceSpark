@@ -3,8 +3,22 @@
 """
 from data_loader import DataLoader, get_new_spark_context
 from vocab_creator import Preprocessor, VocabularyCreator
-
+import os, re
 from pyspark import SparkContext, SparkConf
+
+STOPWORDS = set()
+
+def load_stopwords(stopwords_fp):
+    if not os.path.exists(stopwords_fp):
+        print("Error! Stopwords file doesn't exist. ")
+    with open(stopwords_fp, 'r') as fp:
+        stopwords = map(lambda x: x.strip(), fp.readlines())
+    return set(stopwords)
+
+
+def tokenize(token_string):
+    tokens = filter(lambda x: x!='', re.split("\\W+", token_string.lower()))
+    return list(set(tokens).difference(STOPWORDS))
 
 class TFIDFCalcular(object):
     def __init__(self,
@@ -34,14 +48,12 @@ class TFIDFCalcular(object):
     def calculate_tf(self,
                      doc_ids_to_doc_str):
         doc_to_tokens_rdd = doc_ids_to_doc_str.map(lambda x: (x[0], tokenize(x[1])))
-        tfs = tokens_rdd.flatMapValues(lambda x: x).map(lambda x: (x, 1)).reduceByKey(lambda x, y: x+y)
+        tfs = doc_to_tokens_rdd.flatMapValues(lambda x: x).map(lambda x: (x, 1)).reduceByKey(lambda x, y: x+y)
         return tfs
 
     def calculate_df(self,
                       doc_ids_to_doc_str):
-        df = tokenized_sample.flatMapValues(lambda x: x)\
-                            .distinct()\                                              
-                                .map(lambda (title,word): (word,title)).countByKey()
+        df = doc_ids_to_doc_str.map(lambda x: (x[0],tokenize(x[1]))).flatMapValues(lambda x: x).distinct().map(lambda (title,word): (word,title)).countByKey()
         return df
 
     def calculate_tf_idf(self):
@@ -55,9 +67,9 @@ class TFIDFCalcular(object):
                                                 vocab)
         tf = self.calculate_tf(doc_ids_to_doc_str)
         df = self.calculate_df(doc_ids_to_doc_str)
-        
-        #Calcualte tf-idf
 
+
+        return tf
 
         
 if __name__ == "__main__":
@@ -65,7 +77,8 @@ if __name__ == "__main__":
     context = SparkContext(conf=conf)
     data_path = "/home/rohittulu/Downloads/bookreviews.json"
     stopwords_path = "/home/rohittulu/Downloads/stopwords.txt"
-    sample_factor = 0.001
+    sample_factor = 0.0001
+    STOP_WORDS = load_stopwords(stopwords_path)
     tf_idf_calculator = TFIDFCalcular(context,
                                       data_path,
                                       stopwords_path,
