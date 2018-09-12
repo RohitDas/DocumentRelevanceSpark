@@ -3,7 +3,7 @@
 """
 from data_loader import DataLoader, get_new_spark_context
 from vocab_creator import Preprocessor, VocabularyCreator
-import os, re
+import os, re, math
 from pyspark import SparkContext, SparkConf
 
 STOPWORDS = set()
@@ -67,9 +67,18 @@ class TFIDFCalcular(object):
                                                 vocab)
         tf = self.calculate_tf(doc_ids_to_doc_str)
         df = self.calculate_df(doc_ids_to_doc_str)
-
-
-        return tf
+        
+        total_docs = doc_ids_to_doc_str.count()
+        #Calculating tf_idf
+        tf_idf = tf.map(lambda x: (x[0], (1+math.log(df.get(x[0][1]))*math.log(total_docs/x[1]))))  
+        #Merging cartesian docs with merged tf_idf
+        #merged_tf_idf = tf_idf.union(cartesian_docs)
+        #Sort according to the keys
+        sorted_merged_tf_idf = tf_idf.sortByKey()
+        #Group by key to form a vector
+        representation = sorted_merged_tf_idf.map(lambda x: (x[0][0], (x[0][1], x[1]))).combineByKey(lambda x: [x], lambda u,v: u+[v], lambda u1, u2: u1+u2)
+        #grouped_tf_idf = sorted_merged_tf_idf.groupByKey(lambda x: [x], lambda u,v: u+[v], lambda u1, u2: u1+u2)
+        return representation
 
         
 if __name__ == "__main__":
@@ -77,7 +86,7 @@ if __name__ == "__main__":
     context = SparkContext(conf=conf)
     data_path = "/home/rohittulu/Downloads/bookreviews.json"
     stopwords_path = "/home/rohittulu/Downloads/stopwords.txt"
-    sample_factor = 0.0001
+    sample_factor = 0.00001
     STOP_WORDS = load_stopwords(stopwords_path)
     tf_idf_calculator = TFIDFCalcular(context,
                                       data_path,
