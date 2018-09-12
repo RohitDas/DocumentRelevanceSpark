@@ -1,0 +1,11 @@
+[(u'spark.app.id', u'local-1536784533394'),
+ (u'spark.app.name', u'h'),
+ (u'spark.rdd.compress', u'True'),
+ (u'spark.serializer.objectStreamReset', u'100'),
+ (u'spark.master', u'local[*]'),
+ (u'spark.driver.port', u'41473'),
+ (u'spark.executor.id', u'driver'),
+ (u'spark.submit.deployMode', u'client'),
+ (u'spark.driver.host', u'192.168.1.53'),
+ (u'spark.ui.showConsoleProgress', u'true')]
+
