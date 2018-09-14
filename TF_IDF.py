@@ -5,19 +5,26 @@ from data_loader import DataLoader, get_new_spark_context
 from vocab_creator import Preprocessor, VocabularyCreator
 import os, re, math
 from pyspark import SparkContext, SparkConf
+from collections import OrderedDict
 
 STOPWORDS = set()
 VOCAB = None
 
 
 def dot_prod(vector_a, vector_b):
+    """
+        Function calculates the dot product of 2 vectors.
+    """
     vec_len = len(vector_a)
     dot_prod = 0
     for i in range(vec_len):
         dot_prod += vector_a[i]*vector_b[i]
     return dot_prod
 
-def cosine(vector_a, vector_b):
+def cosine_similarity_a(vector_a, vector_b):
+    """
+        Function calculates the cosine similarity.
+    """
     return dot_prod(vector_a, vector_b)/(math.sqrt(dot_prod(vector_b, vector_b))*math.sqrt(dot_prod(vector_b, vector_b)))
 
 def load_stopwords(stopwords_fp):
@@ -27,7 +34,6 @@ def load_stopwords(stopwords_fp):
         stopwords = map(lambda x: x.strip(), fp.readlines())
     return set(stopwords)
 
-
 def tokenize(token_string):
     tokens = filter(lambda x: x!='', re.split("\\W+", token_string.lower()))
     return list(set(tokens).difference(STOPWORDS))
@@ -36,6 +42,20 @@ def normalize(word_tf_idf_list):
     #Sum of squares
     S = math.sqrt(reduce(lambda x,y: x+y, map(lambda a: math.pow(a[1],2), word_tf_idf_list)))
     return map(lambda x: (x[0], x[1]/S), word_tf_idf_list)
+
+def cosine_similarity_b(word_tf_idf_value, tokens):
+    ordered_dict = OrderedDict()
+    ordered_dict.update(word_tf_idf_value)
+    
+    vector_a, vector_b = [], []
+    for token in tokens:
+        vector_a.append(ordered_dict[token])
+        vector_b.append(1)
+
+    numerator = dot_prod(vector_a, vector_b)
+    denominator = math.sqrt(dot_prod(ordered_dict.values(), ordered_dict.values))
+    denominator *= math.sqrt(len(tokens))
+    return numerator/denominator
 
 class TFIDFCalcular(object):
     def __init__(self,
@@ -96,13 +116,18 @@ class TFIDFCalcular(object):
         #grouped_tf_idf = sorted_merged_tf_idf.groupByKey(lambda x: [x], lambda u,v: u+[v], lambda u1, u2: u1+u2)
         normalize_representation = representation.map(lambda x: (x[0], normalize(x[1])))
         self.doc_representation =  normalize_representation
-        return normalize_representation
 
     def query(self, sentence):
         """
             Get the top k similar documents
         """
-        pass
+        tokens = tokenize(sentence)
+        cosine_similarities_doc = self.doc_representation.map(lambda x: (cosine_similarity_b(x[1], tokens),x[0]))
+        sorted_cosine_similarities_doc = cosine_similarities_doc.sortByKey(False)
+        top_twenty = sorted_cosine_similarities_doc.take(20)
+        return top_twenty
+
+
 
         
 if __name__ == "__main__":
@@ -110,7 +135,7 @@ if __name__ == "__main__":
     context = SparkContext(conf=conf)
     data_path = "/home/rohittulu/Downloads/bookreviews.json"
     stopwords_path = "/home/rohittulu/Downloads/stopwords.txt"
-    sample_factor = 0.00001
+    sample_factor = 0.000001
     STOP_WORDS = load_stopwords(stopwords_path)
     tf_idf_calculator = TFIDFCalcular(context,
                                       data_path,
@@ -118,4 +143,6 @@ if __name__ == "__main__":
                                       sample_factor)
 
     cartesian_docs = tf_idf_calculator.calculate_tf_idf()
-    print cartesian_docs.take(200)
+    query_string = ""
+    top_twenty = tf_idf_calculator.query(query_string)
+    print(top_twenty)
