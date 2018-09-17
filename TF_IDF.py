@@ -46,15 +46,12 @@ def normalize(word_tf_idf_list):
 def cosine_similarity_b(word_tf_idf_value, tokens):
     ordered_dict = OrderedDict()
     ordered_dict.update(word_tf_idf_value)
-    print(ordered_dict)
-    
     vector_a, vector_b = [], []
     for token in tokens:
-        try:
+        if token in ordered_dict:
             vector_a.append(ordered_dict[token])
-        except:
-            vector_a.append(1)
-        vector_b.append(1)
+            vector_b.append(1)
+    print vector_a, vector_b
 
     numerator = dot_prod(vector_a, vector_b)
     denominator = math.sqrt(dot_prod(ordered_dict.values(), ordered_dict.values()))
@@ -73,6 +70,7 @@ class TFIDFCalcular(object):
         self.sample_factor = sample_factor
         self.is_objs_initialized = False
         self.doc_representation = None
+        self.doc_to_str = None
 
     def initialize_objs(self):
         self.data_loader = DataLoader(self.context)
@@ -105,7 +103,6 @@ class TFIDFCalcular(object):
                                                                           self.sample_factor)
         docids, vocab = self.vocab_creator.get_vocab(doc_ids_to_doc_str)
         VOCAB = vocab.collect()
-        print "VOCAB: ", len(VOCAB)
         cartesian_docs = self.get_cartesian_rdd(docids,
                                                 vocab)
         tf = self.calculate_tf(doc_ids_to_doc_str)
@@ -121,6 +118,7 @@ class TFIDFCalcular(object):
         #grouped_tf_idf = sorted_merged_tf_idf.groupByKey(lambda x: [x], lambda u,v: u+[v], lambda u1, u2: u1+u2)
         normalize_representation = representation.map(lambda x: (x[0], normalize(x[1])))
         self.doc_representation =  normalize_representation
+        self.doc_to_str = doc_ids_to_doc_str
 
     def query(self, sentence):
         """
@@ -132,8 +130,11 @@ class TFIDFCalcular(object):
         top_twenty = sorted_cosine_similarities_doc.take(20)
         return top_twenty
 
-
-
+    def queries(self, sentences):
+        """
+        """
+        for sentence in sentences:
+            print self.query(sentence)
         
 if __name__ == "__main__":
     conf = SparkConf().setAppName("TFIDF")
@@ -149,6 +150,5 @@ if __name__ == "__main__":
                                       sample_factor)
 
     cartesian_docs = tf_idf_calculator.calculate_tf_idf()
-    query_string = "wonderful story"
-    top_twenty = tf_idf_calculator.query(query_string)
-    print(top_twenty)
+    query_strings = ["touching fast moving plot"]
+    top_twenty = tf_idf_calculator.queries(query_strings)
