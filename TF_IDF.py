@@ -46,14 +46,18 @@ def normalize(word_tf_idf_list):
 def cosine_similarity_b(word_tf_idf_value, tokens):
     ordered_dict = OrderedDict()
     ordered_dict.update(word_tf_idf_value)
+    print(ordered_dict)
     
     vector_a, vector_b = [], []
     for token in tokens:
-        vector_a.append(ordered_dict[token])
+        try:
+            vector_a.append(ordered_dict[token])
+        except:
+            vector_a.append(1)
         vector_b.append(1)
 
     numerator = dot_prod(vector_a, vector_b)
-    denominator = math.sqrt(dot_prod(ordered_dict.values(), ordered_dict.values))
+    denominator = math.sqrt(dot_prod(ordered_dict.values(), ordered_dict.values()))
     denominator *= math.sqrt(len(tokens))
     return numerator/denominator
 
@@ -101,6 +105,7 @@ class TFIDFCalcular(object):
                                                                           self.sample_factor)
         docids, vocab = self.vocab_creator.get_vocab(doc_ids_to_doc_str)
         VOCAB = vocab.collect()
+        print "VOCAB: ", len(VOCAB)
         cartesian_docs = self.get_cartesian_rdd(docids,
                                                 vocab)
         tf = self.calculate_tf(doc_ids_to_doc_str)
@@ -133,9 +138,10 @@ class TFIDFCalcular(object):
 if __name__ == "__main__":
     conf = SparkConf().setAppName("TFIDF")
     context = SparkContext(conf=conf)
-    data_path = "/home/rohittulu/Downloads/bookreviews.json"
+    #data_path = "/home/rohittulu/Downloads/bookreviews.json"
+    data_path = "test_data_1.json"
     stopwords_path = "/home/rohittulu/Downloads/stopwords.txt"
-    sample_factor = 0.000001
+    sample_factor = 1
     STOP_WORDS = load_stopwords(stopwords_path)
     tf_idf_calculator = TFIDFCalcular(context,
                                       data_path,
@@ -143,6 +149,6 @@ if __name__ == "__main__":
                                       sample_factor)
 
     cartesian_docs = tf_idf_calculator.calculate_tf_idf()
-    query_string = ""
+    query_string = "wonderful story"
     top_twenty = tf_idf_calculator.query(query_string)
     print(top_twenty)
